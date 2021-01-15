@@ -23,9 +23,19 @@ class Matcher:
 
         self.statistics = statistics
         if self.mode == 'store':
-            self.stored[module] = statistics.detach().clone()
+            if type(statistics) is list:
+                 self.stored[module] = []
+                 for statistic in statistics:
+                     self.stored[module].append(statistic.detach().clone())
+            else:
+                 self.stored[module] = statistics.detach().clone()
         elif self.mode == 'match':
-            self.losses[module] = self.loss(statistics, self.stored[module])
+            if type(statistics) is list:
+                temp_loss_0 = self.loss(statistics[0], self.stored[module][0])
+                temp_loss_1 = self.loss(statistics[1], self.stored[module][1])
+                self.losses[module] = temp_loss_0 + temp_loss_1
+            else:
+                self.losses[module] = self.loss(statistics, self.stored[module])
 
     def clean(self):
         self.losses = {}
