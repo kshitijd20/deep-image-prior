@@ -26,32 +26,38 @@ class Matcher:
     def __call__(self, module, features):
         statistics = self.get_statistics(features)
 
+
         self.statistics = statistics
         if self.mode == 'store':
-            self.stored[module] = statistics.detach()
-
-        elif self.mode == 'match':
-           
-            if statistics.ndimension() == 2:
-
-                if self.method == 'maximize':
-                    self.losses[module] = - statistics[0, self.map_index]
-                else:
-                    self.losses[module] = torch.abs(300 - statistics[0, self.map_index]) 
-
+            if type(statistics) is list:
+                 self.stored[module] = []
+                 for statistic in statistics:
+                     self.stored[module].append(statistic.detach().clone())
             else:
-                ws = self.window_size
+                 self.stored[module] = statistics.detach().clone()
+        elif self.mode == 'match':
+            if type(statistics) is list:
 
-                t = statistics.detach() * 0
+                if statistics[0].ndimension() == 2:
 
-                s_cc = statistics[:1, :, t.shape[2] // 2 - ws:t.shape[2] // 2 + ws, t.shape[3] // 2 - ws:t.shape[3] // 2 + ws] #* 1.0
-                t_cc = t[:1, :, t.shape[2] // 2 - ws:t.shape[2] // 2 + ws, t.shape[3] // 2 - ws:t.shape[3] // 2 + ws] #* 1.0
-                t_cc[:, self.map_index,...] = 1
+                    if self.method == 'maximize':
+                        self.losses[module] = - statistics[0][0, self.map_index]
+                    else:
+                        self.losses[module] = torch.abs(300 - statistics[0][0, self.map_index])
 
-                if self.method == 'maximize':
-                    self.losses[module] = -(s_cc * t_cc.contiguous()).sum()
                 else:
-                    self.losses[module] = torch.abs(200 -(s_cc * t_cc.contiguous())).sum()
+                    ws = self.window_size
+
+                    t = statistics[0].detach() * 0
+
+                    s_cc = statistics[0][:1, :,:, t.shape[2] // 2 - ws:t.shape[2] // 2 + ws, t.shape[3] // 2 - ws:t.shape[3] // 2 + ws] #* 1.0
+                    t_cc = t[:1, :, :, t.shape[2] // 2 - ws:t.shape[2] // 2 + ws, t.shape[3] // 2 - ws:t.shape[3] // 2 + ws] #* 1.0
+                    t_cc[:, self.map_index,...] = 1
+
+                    if self.method == 'maximize':
+                        self.losses[module] = -(s_cc * t_cc.contiguous()).sum()
+                    else:
+                        self.losses[module] = torch.abs(200 -(s_cc * t_cc.contiguous())).sum()
 
 
     def clean(self):
